@@ -68,11 +68,11 @@ AI 对检索到的内容进行辅助解释，帮助用户判断：
 
 ### Web Demo Preview
 
-![Web Demo Preview](demo-home.png)
+![Web Demo Preview](screenshots/demo-home.png)
 
-![Web Demo Preview](demo-upload.png)
+![Web Demo Preview](screenshots/demo-upload.png)
 
-![Web Demo Preview](demo-result.png)
+![Web Demo Preview](screenshots/demo-result.png)
 
 ---
 

@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI知识复用助手 · RAG Spike V0.1</title>
+<style>
+:root{
+  --bg:#f6f6f3;--surface:#fff;--surface-2:#fafaf8;--ink:#20201e;--muted:#77756f;
+  --line:#e6e4de;--accent:#5b5ce2;--accent-soft:#f0f0ff;--green:#2f8a63;
+  --shadow:0 12px 36px rgba(30,30,25,.06)
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.65 Inter,system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+button,input,textarea{font:inherit}button{cursor:pointer}
+.app{min-height:100vh;display:flex;flex-direction:column}
+.topbar{
+  height:64px;background:rgba(255,255,255,.94);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;padding:0 34px;position:sticky;top:0;z-index:5;backdrop-filter:blur(10px)
+}
+.brand{font-weight:700;letter-spacing:.02em}.brand span{color:var(--accent);margin-right:8px}
+.demo-badge{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:3px 7px;border-radius:999px;margin-left:9px;font-weight:500}
+.top-actions{display:flex;align-items:center;gap:12px}
+.top-link{border:0;background:transparent;color:var(--muted);font-size:12px}
+.main{width:min(1160px,calc(100% - 48px));margin:0 auto;padding:48px 0 70px}
+.hero{max-width:820px;margin:0 auto 30px}
+.eyebrow{font-size:11px;color:var(--accent);font-weight:750;letter-spacing:.09em;text-transform:uppercase;margin-bottom:9px}
+h1{font-size:36px;line-height:1.18;margin:0 0 12px;letter-spacing:-.035em}
+.hero p{margin:0;color:var(--muted);font-size:15px;max-width:760px}
+.search-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow)}
+textarea{width:100%;min-height:108px;border:0;outline:0;resize:vertical;color:var(--ink);background:transparent;font-size:16px;line-height:1.65;padding:4px}
+textarea::placeholder{color:#aaa79f}
+.search-actions{display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid var(--line);padding-top:13px;margin-top:8px;gap:18px}
+.sample-wrap{flex:1}.sample-label{font-size:11px;color:#99958d;margin-bottom:6px}
+.samples{display:flex;gap:7px;flex-wrap:wrap}.sample{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 11px;color:#55534e;font-size:12px}
+.sample-switch{border:0;background:transparent;color:var(--accent);font-size:12px;padding:6px 4px}
+.primary{border:0;background:var(--accent);color:#fff;border-radius:10px;padding:10px 17px;font-weight:650;white-space:nowrap}
+.primary:disabled{opacity:.45;cursor:not-allowed}
+.secondary{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 13px;color:#444;white-space:nowrap}
+.flow{margin-top:28px}
+.stepbar{display:flex;align-items:center;gap:8px;margin-bottom:15px;color:var(--muted);font-size:12px}
+.step{display:flex;align-items:center;gap:7px}.dot{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:#fff}
+.step.active{color:var(--ink);font-weight:650}.step.active .dot{background:var(--accent);color:#fff;border-color:var(--accent)} .step small{font-size:10px;color:#9a978f;font-weight:500}
+.connector{height:1px;width:46px;background:var(--line)}
+.context-strip{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:11px 16px;background:#fbfbfa;border:1px solid var(--line);border-radius:12px;margin-bottom:12px;font-size:12px}
+.context-strip strong{font-weight:700}.context-strip .context-sub{color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.panel-head{padding:19px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+.panel-head h2{margin:0;font-size:19px}.status{font-size:12px;color:var(--muted);margin-top:2px}
+.results{padding:16px;display:grid;gap:10px}.result{border:1px solid var(--line);border-radius:13px;padding:16px;display:grid;grid-template-columns:1fr auto;gap:18px;transition:.18s}
+.result:hover{border-color:#d7d4cc;transform:translateY(-1px)}.result h3{margin:0 0 5px;font-size:15px}
+.result p{margin:0;color:#66635d;font-size:13px;max-width:850px}.source{font-size:11px;color:var(--muted);margin-top:9px}
+.match{display:inline-block;margin-left:8px;padding:1px 6px;border-radius:999px;background:#f2f2ef}.open{align-self:center;border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 11px;font-size:12px}
+.loading{padding:48px;text-align:center;color:var(--muted)}.spinner{width:24px;height:24px;border:2px solid #ddd;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{padding:40px;text-align:center}.empty h3{margin:0 0 6px;font-size:16px}.empty p{color:var(--muted);margin:0 auto 18px;max-width:520px}
+.detail{padding:22px}.detail-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}
+.box{border:1px solid var(--line);border-radius:13px;padding:17px}.box h4{margin:0 0 8px;font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.box p{margin:0;font-size:14px}.original{background:#fcfcfb}.ai-box{background:#fbfbff;border-color:#e1e1fb}.object{font-size:25px;font-weight:720;letter-spacing:-.02em;margin:3px 0 12px}
+.confirm{margin-top:18px;padding:16px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:20px}
+.confirm-title{font-weight:650}.confirm-sub{font-size:12px;color:var(--muted);margin-top:2px}.actions{display:flex;gap:8px;flex-shrink:0}
+.retry{padding:22px}.retry-grid{display:grid;grid-template-columns:1fr 330px;gap:16px}.retry textarea{border:1px solid var(--line);border-radius:11px;padding:11px;min-height:145px;background:#fff;font-size:14px}
+.attempt{border:1px solid var(--line);border-radius:12px;padding:15px;background:var(--surface-2)}.attempt strong{display:block;margin-bottom:4px}.attempt p{margin:0;color:var(--muted);font-size:12px}
+.connect{padding:22px}.connect-layout{display:grid;grid-template-columns:1fr 330px;gap:16px}.question-card{border:1px solid var(--line);border-radius:13px;padding:17px}
+.question-card label{font-size:12px;font-weight:700;display:block;margin-bottom:8px}.question-card textarea{border:1px solid var(--line);border-radius:10px;padding:11px;min-height:150px;background:#fff;font-size:14px}
+.knowledge-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:var(--accent-soft);color:#3f3f9a;font-size:12px;margin-bottom:13px}
+.side-note{border:1px solid var(--line);border-radius:13px;padding:17px;height:max-content;background:var(--surface-2)}.side-note h3{margin:0 0 7px;font-size:14px}.side-note p{margin:0;color:var(--muted);font-size:12px}
+.ai-relation{margin-top:16px;padding:16px;border-radius:12px;background:var(--accent-soft);color:#34348b;border:1px solid #dedfff}.ai-relation strong{display:block;margin-bottom:5px}
+.follow{padding:16px}.follow-layout{display:grid;grid-template-columns:1fr 300px;gap:16px}
+.chat-main{border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;min-height:455px}
+.messages{padding:18px;display:flex;flex-direction:column;gap:12px;flex:1;overflow:auto}.msg{max-width:82%;padding:11px 13px;border-radius:12px;font-size:13px}.msg.ai{background:#f4f3ef;align-self:flex-start}.msg.user{background:var(--accent);color:#fff;align-self:flex-end}
+.chat-input{border-top:1px solid var(--line);padding:10px;display:flex;gap:8px}.chat-input input{flex:1;border:1px solid var(--line);border-radius:9px;padding:9px 10px;outline:none}
+.send{border:0;background:var(--accent);color:#fff;border-radius:9px;padding:0 13px}.follow-side{display:flex;flex-direction:column;gap:10px}.mini-card{border:1px solid var(--line);border-radius:13px;padding:15px}.mini-card h3{margin:0 0 7px;font-size:14px}.mini-card p{font-size:12px;color:var(--muted);margin:0}.saved{font-size:11px;color:var(--green);margin-top:8px}
+.complete{margin-top:12px;width:100%}
+.draft-note{font-size:11px;color:#aaa69e;margin-top:6px}
+.footer-note{text-align:center;color:#99958d;font-size:11px;margin-top:25px}
+
+.asset-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;margin-top:12px;box-shadow:var(--shadow)}
+.asset-head{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.asset-title{font-weight:700;font-size:15px}.asset-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.upload-btn{display:inline-flex;align-items:center}.asset-status{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface-2);font-size:12px;color:var(--muted)}
+.asset-status.ready{color:var(--green);background:#f3faf7}.asset-status.error{color:#9a4b4b;background:#fff7f7}
+.rag-score{font-variant-numeric:tabular-nums}.page{margin-left:8px}
+.hidden{display:none!important}
+@media(max-width:820px){
+ .topbar{padding:0 18px}.top-actions{display:none}.main{width:min(100% - 24px,1160px);padding-top:35px}h1{font-size:30px}
+ .search-actions{align-items:stretch;flex-direction:column}.primary{width:100%}.detail-grid,.retry-grid,.connect-layout,.follow-layout{grid-template-columns:1fr}
+ .result{grid-template-columns:1fr}.open{justify-self:start}.confirm{align-items:flex-start;flex-direction:column}.actions{width:100%}.actions button{flex:1}.context-strip{align-items:flex-start;flex-direction:column}
+}
+
+.ai-understanding-box{margin-top:16px;padding:16px;border-radius:14px;background:#f7f7fb;border:1px solid #ddd}
+.ai-understanding-title{font-weight:700;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="topbar">
+  <div class="brand"><span>✦</span>AI知识复用助手 <span class="demo-badge">Web Demo · RAG Spike V0.1</span><span class="demo-badge">Local Knowledge</span></div>
+  <div class="top-actions">
+    <button class="top-link" onclick="goHome()">回到找回</button>
+    <span style="font-size:12px;color:#8a877f">找回 → 理解 → 关联 → 继续使用</span>
+  </div>
+</header>
+
+<main class="main">
+<section class="hero">
+  <div class="eyebrow">Recover what you once knew</div>
+  <h1>找回那些“我记得看过，<br>但想不起在哪里”的知识。</h1>
+  <p>不需要准确关键词。用你记得的方式描述观点、例子或场景，AI 从你的知识资产中找出候选内容，再由你确认、关联到当前问题，并继续使用。</p>
+</section>
+
+<section class="search-card" id="searchCard">
+  <textarea id="query" placeholder="例如：我记得《深度工作》里讲过，人在专注工作时应该减少注意力切换，好像和“注意力残留”有关。"></textarea>
+  <div class="search-actions">
+    <div class="sample-wrap">
+      <div class="sample-label">不知道从哪里开始？试试一个记忆描述</div>
+      <div class="samples" id="samples"></div>
+    </div>
+    <button class="primary" id="searchBtn">开始找回</button>
+  </div>
+</section>
+
+<section class="asset-card" id="assetCard">
+  <div class="asset-head">
+    <div>
+      <div class="asset-title">我的知识资产</div>
+      <div class="asset-sub">先导入 1 本 PDF，再用你的模糊记忆找回其中的内容。</div>
+    </div>
+    <label class="secondary upload-btn">
+      选择 PDF
+      <input id="pdfInput" type="file" accept=".pdf,application/pdf" hidden>
+    </label>
+  </div>
+  <div id="assetStatus" class="asset-status">尚未导入知识资产</div>
+</section>
+
+<section class="flow">
+<div class="stepbar">
+  <div class="step active" id="s1"><span class="dot">1</span>找回 <small>AI 语义检索</small></div><div class="connector"></div>
+  <div class="step" id="s2"><span class="dot">2</span>理解 <small>AI 重新理解</small></div><div class="connector"></div>
+  <div class="step" id="s3"><span class="dot">3</span>关联与继续使用 <small>AI 辅助关联</small></div>
+</div>
+<div id="context"></div>
+<div class="panel" id="panel"></div>
+</section>
+
+<div class="footer-note">RAG Spike V0.1 · 当前检索来自本地导入的 PDF；Embedding 在本机运行，原始 PDF 与向量索引均保存在本机。</div>
+</main>
+</div>
+
+<script>
+let knowledge = [];
+
+const sampleSets = [
+ [
+  ["为什么会拖延？","我记得以前看过一个观点，好像解释了人为什么明知道该做却一直拖延。"],
+  ["怎样减少注意力切换？","我记得《深度工作》里讲过，人在专注工作时应该减少注意力切换，好像和“注意力残留”有关。"],
+  ["AI 会怎样改变学习？","我记得以前看到过一个观点，说工具改变学习方式之后，人需要重新思考自己到底在记什么。"]
+ ],
+ [
+  ["注意力残留","我记得一个关于注意力的概念：从一个任务切到另一个任务之后，前一个任务好像还会留下一点注意力。"],
+  ["减少分心","以前看过一个观点，说频繁切换软件会让专注变差，但我不记得具体叫什么。"],
+  ["环境影响习惯","我记得读过一个关于习惯的观点，好像说环境比意志力更重要。"]
+ ]
+];
+
+let sampleSetIndex=0;
+let currentQuery="";
+let supplementalClues="";
+let searchAttempt=0;
+let selectedKnowledge=null;
+let currentProblem="";
+let connectionAttempt=0;
+let followUpRound=0;
+let drafts={};
+
+const panel=document.getElementById("panel");
+const query=document.getElementById("query");
+const context=document.getElementById("context");
+
+function escapeHtml(s){
+ return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+}
+function saveDraft(key,value){
+ drafts[key]=value;
+ localStorage.setItem("knowledgeDemoDrafts",JSON.stringify(drafts));
+}
+function loadDrafts(){
+ try{drafts=JSON.parse(localStorage.getItem("knowledgeDemoDrafts")||"{}");}catch(e){drafts={};}
+}
+function renderSamples(){
+ const set=sampleSets[sampleSetIndex];
+ document.getElementById("samples").innerHTML=set.map(([label,q])=>
+  `<button class="sample" data-q="${escapeHtml(q)}">${escapeHtml(label)}</button>`
+ ).join("") + `<button class="sample-switch" onclick="rotateSamples()">换一换 ↻</button>`;
+ document.querySelectorAll(".sample").forEach(b=>b.onclick=()=>{query.value=b.dataset.q;saveDraft("find",query.value);query.focus();});
+}
+function rotateSamples(){sampleSetIndex=(sampleSetIndex+1)%sampleSets.length;renderSamples();}
+function setStep(n){[1,2,3].forEach(i=>document.getElementById("s"+i).classList.toggle("active",i<=n));}
+function showContext(){
+ if(!selectedKnowledge){context.innerHTML="";return;}
+ context.innerHTML=`<div class="context-strip">
+  <div><strong>当前正在处理：「${escapeHtml(selectedKnowledge.object)}」</strong> <span class="context-sub">· ${escapeHtml(selectedKnowledge.source)}</span></div>
+  <button class="top-link" onclick="goHome()">结束并回到找回 →</button>
+ </div>`;
+}
+function goHome(){
+ selectedKnowledge=null;currentProblem="";connectionAttempt=0;followUpRound=0;searchAttempt=0;setStep(1);context.innerHTML="";
+ panel.innerHTML=`<div class="panel-head"><div><h2>我想找回什么？</h2><div class="status">描述你记得的内容，不需要准确关键词。</div></div></div>
+ <div class="empty"><h3>从模糊记忆开始</h3><p>你可以描述一个观点、例子、场景，甚至只记得“好像讲过什么”。AI 会先帮你找到候选内容。</p></div>`;
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+async function runSearch(){
+ const q=query.value.trim();
+ if(!q)return;
+ if(!knowledge.length){
+   setAssetStatus("请先导入至少 1 本 PDF。","error");
+   return;
+ }
+ currentQuery=q; supplementalClues=""; searchAttempt=1; saveDraft("find",q);
+ setStep(1);context.innerHTML="";
+ panel.innerHTML='<div class="loading"><div class="spinner"></div>正在从你的知识资产中进行真实语义检索…<br><small>正在查询已导入 PDF 的语义向量</small></div>';
+ try{
+   const data=await apiSearch(q);
+   renderRagResults(data);
+ }catch(err){
+   panel.innerHTML=`<div class="empty"><h3>检索暂时失败</h3><p>${escapeHtml(err.message||"无法连接本地 RAG 服务。")}</p><button class="secondary" onclick="runSearch()">重试</button></div>`;
+ }
+}
+function combinedQuery(){return (currentQuery+" "+supplementalClues).trim();}
+function score(){return 0;}
+
+async function apiSearch(q){
+ const res=await fetch("/api/search",{
+   method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({query:q,top_k:5})
+ });
+ const data=await res.json();
+ if(!res.ok) throw new Error(data.detail||"检索失败");
+ return data;
+}
+function renderRagResults(data){
+ const results=data.results||[];
+ if(!results.length){
+   panel.innerHTML=`<div class="empty">
+     <h3>暂时没有找到足够可靠的匹配</h3>
+     <p>这次检索没有找到达到当前可靠性阈值的内容。你可以补充一些记得的场景、观点或上下文，再试一次。</p>
+     <button class="secondary" onclick="showRetry()">补充记忆线索</button>
+   </div>`;
+   return;
+ }
+ if(results.length){
+  panel.innerHTML=`<div class="panel-head"><div><h2>找到 ${results.length} 条可能相关的知识</h2><div class="status">真实语义检索：仅展示达到当前可靠性阈值的候选；最终由你确认。</div></div><div class="status">第 ${searchAttempt} 次找回</div></div>
+  <div class="results">${results.map(r=>`
+   <article class="result"><div>
+    <h3>${escapeHtml(r.title)}</h3><p>${escapeHtml(r.text)}</p>
+    <div class="source">${escapeHtml(r.source)}${r.page?`<span class="page">第 ${r.page} 页</span>`:""} <span class="match rag-score">相似度 ${(r.score*100).toFixed(1)}%</span></div>
+   </div><button class="open" onclick='understandRag(${JSON.stringify(r).replace(/'/g,"&#39;")})'>打开内容 →</button></article>`).join("")}</div>
+  <div style="padding:0 16px 16px"><button class="secondary" onclick="showRetry()">没找到想要的？补充记忆线索</button></div>`;
+ }else showNoResult();
+}
+function understandRag(item){
+ selectedKnowledge={
+   id:item.id,title:item.title,object:item.object||"检索到的知识片段",
+   source:item.source,text:item.text,original:item.original||item.text,
+   page:item.page,score:item.score
+ };
+ showContext();setStep(2);
+ panel.innerHTML=`<div class="panel-head"><div><h2>内容详情</h2><div class="status">候选内容来自真实 PDF；再由你确认它是不是想找的知识。</div></div></div>
+ <div class="detail">
+  <div class="detail-grid">
+   <div class="box original"><h4>检索到的原文</h4><div class="object">${escapeHtml(selectedKnowledge.object)}</div><p>${escapeHtml(selectedKnowledge.original)}</p>
+    <div class="source" style="margin-top:12px">${escapeHtml(selectedKnowledge.source)}${selectedKnowledge.page?` · 第 ${selectedKnowledge.page} 页`:""} <span class="match">语义相似度 ${(selectedKnowledge.score*100).toFixed(1)}%</span></div>
+   </div>
+   <div class="box ai-box"><h4>当前 Spike 状态</h4><p>V0.1 先只验证 Retrieval：系统根据你的自然语言描述，从真实 PDF 中找回相关片段。</p><div class="ai-relation">你最初记得的是：<br><b>${escapeHtml(currentQuery)}</b></div>
+   </div>
+  </div>
+  <div id="ai-understanding-box" class="ai-understanding-box"><div class="ai-understanding-title">🤖 AI 为什么认为它相关？</div><div id="ai-understanding-text">AI 将结合你的描述和检索内容，帮助判断为什么它可能相关。</div>
+<button id="generate-ai-understanding-btn" class="secondary">生成 AI 理解</button></div>
+  <div class="confirm"><div><div class="confirm-title">这是我想找的内容吗？</div><div class="confirm-sub">AI 提供候选与证据，但最终确认由你完成。</div></div>
+   <div class="actions"><button class="secondary" onclick="showRetry()">否，重新找回</button><button class="primary" onclick="confirmKnowledge()">是，继续</button></div>
+  </div>
+ </div>`;
+}
+function combinedQuery(){return (currentQuery+" "+supplementalClues).trim();}
+function score(q,item){
+ const text=q.toLowerCase();
+ const groups=[
+  ["注意力残留",["注意力","切换","分心","专注","残留"]],
+  ["切换成本",["切换","成本","频繁","专注"]],
+  ["注意力管理",["注意力","数字","工具","分心"]],
+  ["改变环境",["习惯","环境","意志力","自律"]],
+  ["默认选项",["默认","选择","选项","决策"]]
+ ];
+ let s=0;
+ groups.forEach(([obj,words])=>{if(item.object===obj)words.forEach(w=>{if(text.includes(w))s+=4;});});
+ item.tags.forEach(t=>{if(text.includes(t.toLowerCase()))s+=2});
+ return s;
+}
+function showResults(){
+ const q=combinedQuery();
+ let results=[...knowledge].sort((a,b)=>score(q,b)-score(q,a));
+ if(searchAttempt>=3 && score(q,results[0])===0) results=[];
+ if(results.length){
+  results=results.slice(0,3);
+  panel.innerHTML=`<div class="panel-head"><div><h2>找到 ${results.length} 条可能相关的知识</h2><div class="status">AI 语义检索：从模糊记忆中寻找相关内容；候选结果由你确认。</div></div><div class="status">第 ${searchAttempt} 次找回</div></div>
+  <div class="results">${results.map((r,i)=>`
+   <article class="result"><div>
+    <h3>${escapeHtml(r.title)}</h3><p>${escapeHtml(r.text)}</p>
+    <div class="source">${escapeHtml(r.source)} <span class="match">匹配度 ${i===0?"较高":i===1?"较高":"一般"}</span></div>
+   </div><button class="open" onclick="understand(${r.id})">打开内容 →</button></article>`).join("")}</div>
+  <div style="padding:0 16px 16px"><button class="secondary" onclick="showRetry()">没找到想要的？补充记忆线索</button></div>`;
+ }else showNoResult();
+}
+function showNoResult(){
+ panel.innerHTML=`<div class="panel-head"><div><h2>暂时没有找到足够匹配的内容</h2><div class="status">这不代表你的知识资产里没有它，可以再提供一些你记得的线索。</div></div><div class="status">第 ${searchAttempt} / 3 次</div></div>
+ <div class="empty"><h3>还记得哪些线索？</h3><p>可以补充书名、作者、使用场景、一个模糊概念，或者“它可能不是哪本书”。</p>
+ <button class="primary" onclick="showRetry()">补充记忆线索</button></div>`;
+}
+function showRetry(){
+ setStep(1);
+ panel.innerHTML=`<div class="panel-head"><div><h2>重新找回</h2><div class="status">保留原始记忆，在此基础上补充新的线索。</div></div><div class="status">第 ${searchAttempt} / 3 次</div></div>
+ <div class="retry"><div class="retry-grid">
+  <div><div style="font-size:11px;color:#99958d;margin-bottom:6px">原始记忆</div><div class="box" style="margin-bottom:13px">${escapeHtml(currentQuery)}</div>
+   <label style="font-size:12px;font-weight:700;display:block;margin-bottom:7px">还记得哪些线索？</label>
+   <textarea id="clueInput" placeholder="例如：我记得是在讲如何减少分心，可能不是《深度工作》。"></textarea>
+   <div class="draft-note" id="retryDraft">输入会自动保存为草稿</div>
+   <button class="primary" style="margin-top:12px" onclick="retrySearch()">重新找回</button>
+  </div>
+  <aside class="attempt"><strong>找回状态</strong><p>当前尝试：${searchAttempt} / 3</p><p style="margin-top:6px">3 次是 Demo 的初始边界，不代表真实产品已验证的最优次数。</p></aside>
+ </div></div>`;
+ const input=document.getElementById("clueInput");
+ input.value=drafts.retry||"";
+ input.oninput=()=>{saveDraft("retry",input.value);document.getElementById("retryDraft").textContent="已自动保存草稿";};
+}
+async function retrySearch(){
+ const input=document.getElementById("clueInput"); supplementalClues=input.value.trim();
+ if(!supplementalClues)return;
+ searchAttempt++;
+ saveDraft("retry",supplementalClues);
+ if(searchAttempt>3){showAssetFallback();return;}
+ panel.innerHTML='<div class="loading"><div class="spinner"></div>正在结合新的记忆线索重新进行语义检索…</div>';
+ try{
+   const data=await apiSearch(combinedQuery());
+   renderRagResults(data);
+ }catch(err){
+   panel.innerHTML=`<div class="empty"><h3>检索暂时失败</h3><p>${escapeHtml(err.message||"无法连接本地 RAG 服务。")}</p><button class="secondary" onclick="retrySearch()">重试</button></div>`;
+ }
+}
+function showAssetFallback(){
+ panel.innerHTML=`<div class="panel-head"><div><h2>暂时还没找到</h2><div class="status">可以先查看自己的知识资产，再决定下一步。</div></div><div class="status">已完成 3 次找回尝试</div></div>
+ <div class="empty"><h3>换一种方式继续</h3><p>这只是当前 Demo 的中性兜底，不把失败直接归因于“知识资产不足”。</p>
+ <button class="secondary" onclick="showAssetList()">查看我的知识资产</button></div>`;
+}
+async function showAssetList(){
+ try{
+  const res=await fetch("/api/assets");
+  const data=await res.json();
+  const assets=data.assets||[];
+  panel.innerHTML=`<div class="panel-head"><div><h2>我的知识资产</h2><div class="status">当前 Spike 已导入的 PDF。</div></div><button class="secondary" onclick="goHome()">回到找回</button></div>
+  <div class="results">${assets.length?assets.map(a=>`<article class="result"><div><h3>${escapeHtml(a.filename)}</h3><p>${a.chunks} 个知识片段已建立语义索引。</p><div class="source">${a.pages?`${a.pages} 页 · `:""}已准备好</div></div></article>`).join(""):`<div class="empty"><h3>还没有知识资产</h3><p>先回到页面顶部选择一本 PDF。</p></div>`}</div>`;
+ }catch(e){
+  panel.innerHTML=`<div class="empty"><h3>无法读取知识资产</h3><p>${escapeHtml(e.message||"本地 RAG 服务不可用。")}</p></div>`;
+ }
+}
+function understand(id){
+ selectedKnowledge=knowledge.find(x=>x.id===id);
+ showContext();setStep(2);
+ panel.innerHTML=`<div class="panel-head"><div><h2>内容详情</h2><div class="status">AI 重新理解候选内容；再由你确认它是不是想找的知识。</div></div></div>
+ <div class="detail">
+  <div class="detail-grid">
+   <div class="box original"><h4>知识对象</h4><div class="object">「${escapeHtml(selectedKnowledge.object)}」</div><p>${escapeHtml(selectedKnowledge.original)}</p></div>
+   <div class="box ai-box"><h4>AI 重新理解</h4><p>${escapeHtml(selectedKnowledge.text)}</p><div class="ai-relation">你最初记得的是：<br><b>${escapeHtml(currentQuery)}</b></div></div>
+  </div>
+  <div class="confirm"><div><div class="confirm-title">这是我想找的内容吗？</div><div class="confirm-sub">AI 提供候选与解释，但最终确认由你完成。</div></div>
+   <div class="actions"><button class="secondary" onclick="showRetry()">否，重新找回</button><button class="primary" onclick="confirmKnowledge()">是，继续</button></div>
+  </div>
+ </div>`;
+}
+function confirmKnowledge(){showConnect();}
+function showConnect(){
+ setStep(3);showContext();connectionAttempt=0;
+ panel.innerHTML=`<div class="panel-head"><div><h2>建立关联</h2><div class="status">AI 辅助关联：让刚找回的知识参与一个真实的当前问题。</div></div><div class="status">关联尝试 ${connectionAttempt} / 3</div></div>
+ <div class="connect"><div class="connect-layout">
+  <div class="question-card"><div class="knowledge-chip">已确认：「${escapeHtml(selectedKnowledge.object)}」</div>
+   <label>它和我现在的问题 / 有什么关系？</label>
+   <textarea id="problemInput" placeholder="例如：我最近学习 Figma 时，经常一边看教程一边切到别的软件，结果学完之后很难记住。">${escapeHtml(drafts.connect||"")}</textarea>
+   <div class="draft-note" id="connectDraft">输入会自动保存为草稿</div>
+   <button class="primary" style="margin-top:12px" onclick="establishConnection()">建立关联</button>
+  </div>
+  <aside class="side-note"><h3>当前知识</h3><p>「${escapeHtml(selectedKnowledge.object)}」</p><p style="margin-top:10px">你可以把一个具体场景、正在解决的问题或想做的产品判断写进来。</p></aside>
+ </div></div>`;
+ const input=document.getElementById("problemInput");
+ input.oninput=()=>{saveDraft("connect",input.value);document.getElementById("connectDraft").textContent="已自动保存草稿";};
+}
+function establishConnection(){
+ const input=document.getElementById("problemInput"), text=input.value.trim();
+ if(!text)return;
+ currentProblem=text;connectionAttempt++;
+ saveDraft("connect",text);
+ if(connectionAttempt>3){showFollowUp();return;}
+ panel.innerHTML=`<div class="panel-head"><div><h2>建立关联</h2><div class="status">AI 已基于「${escapeHtml(selectedKnowledge.object)}」解释它与你当前问题的关系。</div></div><div class="status">关联尝试 ${connectionAttempt} / 3</div></div>
+ <div class="connect"><div class="ai-relation"><strong>为什么有关联</strong>
+  你描述的问题是：${escapeHtml(text)}<br><br>
+  「${escapeHtml(selectedKnowledge.object)}」提供了一个可以验证的解释：如果学习过程中频繁切换任务，注意力可能持续残留在前一个任务上，因此“看完教程却记不住”不一定只是记忆能力的问题，也可能与切换方式有关。这里仍然需要结合你的实际学习行为验证，而不是直接把它当成因果结论。
+ </div>
+ <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;gap:12px">
+  <div style="font-size:12px;color:var(--muted)">如果这次关联不合适，可以换一种当前问题。</div>
+  <div class="actions"><button class="secondary" onclick="showConnect()">重新关联（剩余 ${3-connectionAttempt} 次）</button><button class="primary" onclick="showFollowUp()">继续追问 →</button></div>
+ </div></div>`;
+}
+function showFollowUp(){
+ setStep(3);showContext();followUpRound=0;
+ panel.innerHTML=`<div class="panel-head"><div><h2>围绕这条知识继续思考</h2><div class="status">基于已经找回的知识继续使用，不重新搜索。</div></div><div class="status">最多 3 轮 · ${followUpRound} / 3</div></div>
+ <div class="follow"><div class="follow-layout">
+  <div class="chat-main"><div class="messages" id="messages">
+   <div class="msg ai">已找回：「${escapeHtml(selectedKnowledge.object)}」<br><span style="font-size:11px;color:#777">来源：${escapeHtml(selectedKnowledge.source)} · 知识 +1</span><br><br>现在可以继续追问。我会基于已经找回的知识回答，而不是重新搜索。</div>
+  </div>
+  <div class="chat-input"><input id="chatInput" placeholder="例如：如果我必须频繁切换，怎么减少注意力残留的影响？"><button class="send" onclick="sendMsg()">发送</button></div></div>
+  <aside class="follow-side">
+   <div class="mini-card"><h3>当前知识</h3><p>「${escapeHtml(selectedKnowledge.object)}」</p><p style="margin-top:5px">来源：${escapeHtml(selectedKnowledge.source)}</p><p style="margin-top:8px">AI 回答基于当前已找回知识，不重新搜索。</p></div>
+   <div class="mini-card"><h3>轻量应用</h3><p>把刚找回的知识转成一个可执行的思考提示。</p><button class="secondary" style="width:100%;margin-top:10px" onclick="applyHint(this)">收藏这个提示</button></div>
+   <button class="secondary complete" onclick="goHome()">完成任务 →</button>
+  </aside>
+ </div></div>`;
+}
+function applyHint(btn){btn.textContent="已收藏 ✓";btn.disabled=true;}
+function sendMsg(){
+ const input=document.getElementById("chatInput"), text=input.value.trim(); if(!text)return;
+ if(followUpRound>=3){input.value="";return;}
+ saveDraft("followup",text);
+ const box=document.getElementById("messages");
+ box.insertAdjacentHTML("beforeend",`<div class="msg user">${escapeHtml(text)}</div>`);
+ input.value="";followUpRound++;
+ setTimeout(()=>{
+  const answer=`基于「${escapeHtml(selectedKnowledge.object)}」，可以先把这个问题拆成一个可验证的判断：减少不必要的任务切换，是否会让你更容易保持当前任务的上下文。你可以先观察一次实际学习过程，记录切换发生在哪里、切换后重新进入任务用了多久，再决定是否需要改变流程。`;
+  box.insertAdjacentHTML("beforeend",`<div class="msg ai">${answer}</div>`);
+  const head=document.querySelector(".panel-head .status:last-child");
+  if(head)head.textContent=`最多 3 轮 · ${followUpRound} / 3`;
+  if(followUpRound>=3){
+    const note=document.createElement("div");note.className="draft-note";note.textContent="本知识主题的 Demo 追问次数已达到 3 轮；如要处理新的知识主题，请回到找回。";
+    document.querySelector(".chat-main").appendChild(note);
+    input.disabled=true;input.placeholder="本主题已完成 3 轮追问";
+  }
+ },420);
+}
+
+function setAssetStatus(text,type=""){
+ const el=document.getElementById("assetStatus");
+ el.textContent=text;el.className="asset-status"+(type?" "+type:"");
+}
+async function loadAssets(){
+ try{
+  const res=await fetch("/api/assets");
+  if(!res.ok) return;
+  const data=await res.json();
+  const assets=data.assets||[];
+  if(assets.length){
+    knowledge=assets;
+    setAssetStatus(`已导入 ${assets.length} 个 PDF，可以开始找回。`,"ready");
+  }
+ }catch(e){}
+}
+async function uploadPdf(file){
+ if(!file)return;
+ if(!file.name.toLowerCase().endsWith(".pdf")){
+   setAssetStatus("V0.1 目前只支持 PDF。","error");return;
+ }
+ setAssetStatus(`正在处理「${file.name}」：解析文本、切分并建立语义索引…`);
+ const form=new FormData();form.append("file",file);
+ try{
+  const res=await fetch("/api/upload",{method:"POST",body:form});
+  const data=await res.json();
+  if(!res.ok) throw new Error(data.detail||"上传失败");
+  setAssetStatus(`✓ ${file.name} 已完成索引：${data.chunks} 个知识片段。`,"ready");
+  await loadAssets();
+ }catch(err){
+  setAssetStatus(err.message||"处理失败，请检查 API Key 和本地服务。","error");
+ }
+}
+
+document.addEventListener("click", async (e)=>{
+ if(e.target && e.target.id==="generate-ai-understanding-btn"){
+   const box=document.getElementById("ai-understanding-text");
+   const context=selectedKnowledge?.original || selectedKnowledge?.text || "";
+   box.textContent="AI 正在理解...";
+   try{
+     const r=await fetch("/api/connect",{
+       method:"POST",
+       headers:{"Content-Type":"application/json"},
+       body:JSON.stringify({query:currentQuery,context})
+     });
+     const d=await r.json();
+     if(!r.ok) throw new Error(d.detail||"AI 理解暂时不可用");
+     if(!d.explanation) throw new Error("暂时没有生成结果");
+     box.innerHTML=`<div>${escapeHtml(d.explanation)}</div>
+       <div class="source" style="margin-top:10px">本次依据：${escapeHtml(selectedKnowledge.source)}${selectedKnowledge.page?` · 第 ${selectedKnowledge.page} 页`:""}${typeof selectedKnowledge.score==="number"?` · 相似度 ${(selectedKnowledge.score*100).toFixed(1)}%`:""}</div>`;
+   }catch(err){
+     box.textContent="AI 理解暂时不可用："+err;
+   }
+ }
+});
+
+document.getElementById("searchBtn").addEventListener("click",runSearch);
+query.addEventListener("input",()=>saveDraft("find",query.value));
+query.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key==="Enter")runSearch();});
+loadDrafts();renderSamples();loadAssets();document.getElementById("pdfInput").addEventListener("change",e=>uploadPdf(e.target.files[0]));
+if(drafts.find)query.value=drafts.find;
+goHome();
+</script>
+</body>
+</html>

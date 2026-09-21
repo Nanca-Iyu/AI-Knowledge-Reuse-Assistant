@@ -1,0 +1,23 @@
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local RAG data
+backend/data/
+
+# Local model/cache files
+*.onnx
+*.bin
+*.pt
+*.pth
+
+# IDE / editor files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

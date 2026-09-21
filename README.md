@@ -66,6 +66,14 @@ AI 对检索到的内容进行辅助解释，帮助用户判断：
 
 ![Product Flow 02](screenshots/prototype-flow-02.png)
 
+### Web Demo Preview
+
+![Web Demo Preview](demo-home.png)
+
+![Web Demo Preview](demo-upload.png)
+
+![Web Demo Preview](demo-result.png)
+
 ---
 
 ## 04｜What I Built

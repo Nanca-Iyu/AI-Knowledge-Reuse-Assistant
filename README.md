@@ -224,6 +224,8 @@ Find → Understand → Connect
 
 问题是否成立 → AI 是否真的降低了完成成本 → 用户是否仍然保留判断权 → 哪些假设还需要进一步验证。
 
+---
+
 Project Scope
 
 This repository represents a working AI Product / RAG Prototype for portfolio and interview demonstration.

@@ -107,35 +107,39 @@ Semantic Retrieval
 LLM-assisted Relevance Explanation
 ```
 
-Core Stack
-Frontend: HTML / CSS / JavaScript
-Backend: FastAPI
-Embedding: BAAI/bge-small-zh-v1.5
-Vector Retrieval: Local semantic similarity search
-LLM: DeepSeek API
-PDF Parsing: pypdf
-Retrieval Settings
+### Core Stack
+
+- **Frontend:** HTML / CSS / JavaScript
+- **Backend:** FastAPI
+- **Embedding:** `BAAI/bge-small-zh-v1.5`
+- **Vector Retrieval:** Local semantic similarity search
+- **LLM:** DeepSeek API
+- **PDF Parsing:** pypdf
+
+### Retrieval Settings
 
 当前 Prototype 使用：
 
-Chunk size：700 characters
-Chunk overlap：120 characters
-Similarity threshold：0.55
-Top-K retrieval：5
+- Chunk size：700 characters
+- Chunk overlap：120 characters
+- Similarity threshold：0.55
+- Top-K retrieval：5
 
-0.55 是当前 Spike 的实验参数，并不是经过大规模验证后的“正确阈值”。
+> `0.55` 是当前 Spike 的实验参数，并不是经过大规模验证后的“正确阈值”。
 
 ---
 
 ## 06｜Current Status
-Capability	Status
-PDF parsing	✅
-Text chunking	✅
-Local embedding	✅
-Semantic retrieval	✅
-LLM-assisted relevance explanation	✅
-Web Demo	✅
-Production deployment	—
+
+| Capability | Status |
+|---|---|
+| PDF parsing | ✅ |
+| Text chunking | ✅ |
+| Local embedding | ✅ |
+| Semantic retrieval | ✅ |
+| LLM-assisted relevance explanation | ✅ |
+| Web Demo | ✅ |
+| Production deployment | — |
 
 当前版本用于验证核心产品 Flow 与 RAG Retrieval 能力。
 
@@ -163,15 +167,15 @@ Retrieval quality 仍受到 Chunking 与 Similarity Threshold 的影响。
 
 在这个 Prototype 中，我将 AI 的角色限制在：
 
-检索候选 + 解释关联
+**检索候选 + 解释关联**
 
 而不是：
 
-替用户判断“这个知识一定有用”。
+**替用户判断“这个知识一定有用”。**
 
 因此，当检索证据不足时，系统应该允许结果停留在：
 
-目前无法判断。
+> **目前无法判断。**
 
 而不是为了生成一个看起来合理的答案，强行建立关联。
 
@@ -188,10 +192,16 @@ Retrieval quality 仍受到 Chunking 与 Similarity Threshold 的影响。
 ### Start
 
 在项目根目录运行：
+
 ```text
 start-rag.bat
 ```
-启动后访问：http://127.0.0.1:8000
+
+启动后访问：
+
+```text
+http://127.0.0.1:8000
+```
 
 首次使用 Local Embedding 时，程序可能需要下载约 90 MB 的模型文件。
 API Key 通过环境变量 DEEPSEEK_API_KEY 提供，不应写入代码或提交到 GitHub。

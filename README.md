@@ -105,6 +105,8 @@ Local Embedding
 Semantic Retrieval
  ↓
 LLM-assisted Relevance Explanation
+```
+
 Core Stack
 Frontend: HTML / CSS / JavaScript
 Backend: FastAPI
@@ -123,7 +125,9 @@ Top-K retrieval：5
 
 0.55 是当前 Spike 的实验参数，并不是经过大规模验证后的“正确阈值”。
 
-06｜Current Status
+---
+
+## 06｜Current Status
 Capability	Status
 PDF parsing	✅
 Text chunking	✅
@@ -135,7 +139,9 @@ Production deployment	—
 
 当前版本用于验证核心产品 Flow 与 RAG Retrieval 能力。
 
-07｜Known Limitations
+---
+
+## 07｜Known Limitations
 
 当前 Prototype 仍存在一些明确限制：
 
@@ -144,7 +150,10 @@ Retrieval quality 仍受到 Chunking 与 Similarity Threshold 的影响。
 当前知识资产与向量索引主要用于本地 Demo / Spike 验证。
 尚未进行大规模用户测试，因此目前无法判断长期使用价值。
 当前重点是验证核心交互与 AI 能力边界，而不是构建完整的知识管理系统。
-08｜Product Judgment
+
+---
+
+## 08｜Product Judgment
 
 这个项目并不是为了证明“RAG 可以工作”。
 
@@ -166,46 +175,30 @@ Retrieval quality 仍受到 Chunking 与 Similarity Threshold 的影响。
 
 而不是为了生成一个看起来合理的答案，强行建立关联。
 
-09｜Local Development
-Requirements
-Python 3.10+
-FastAPI
-Uvicorn
-FastEmbed
-pypdf
-DeepSeek API Key（用于 AI Explanation）
-Install Dependencies
+---
 
-进入 backend 目录：
+## 09｜Run Locally
 
-python -m pip install -r requirements.txt
-Start
+### Requirements
+
+- Python 3.10+
+- Dependencies listed in `backend/requirements.txt`
+- DeepSeek API Key for LLM Explanation
+
+### Start
 
 在项目根目录运行：
-
+```text
 start-rag.bat
-
-或者进入 backend 后运行：
-
-python server.py
-
-启动后访问：
-
-http://127.0.0.1:8000
+```
+启动后访问：http://127.0.0.1:8000
 
 首次使用 Local Embedding 时，程序可能需要下载约 90 MB 的模型文件。
+API Key 通过环境变量 DEEPSEEK_API_KEY 提供，不应写入代码或提交到 GitHub。
 
-Environment Variable
+---
 
-LLM Explanation 使用 DeepSeek API。
-
-请通过环境变量提供：
-
-DEEPSEEK_API_KEY
-
-API Key 不应写入代码或提交到 GitHub。
-
-10｜Reflection
+## 10｜Reflection
 
 这个项目让我进一步确认：
 
@@ -226,6 +219,3 @@ Project Scope
 This repository represents a working AI Product / RAG Prototype for portfolio and interview demonstration.
 
 It is not intended to represent a production-ready knowledge management system.
-
-
----

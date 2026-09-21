@@ -60,6 +60,12 @@ AI 对检索到的内容进行辅助解释，帮助用户判断：
 
 当前版本重点验证的是核心交互与 Retrieval 能力，而不是完整的知识管理系统。
 
+### Product Flow
+
+![Product Flow 01](screenshots/prototype-flow-01.png)
+
+![Product Flow 02](screenshots/prototype-flow-02.png)
+
 ---
 
 ## 04｜What I Built

@@ -1,0 +1,18 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const html=fs.readFileSync(__dirname+'/index.html','utf8');
+const code=html.slice(html.indexOf('async function establishConnection()'),html.indexOf('function showFollowUp()'));
+(async()=>{
+ const output={isConnected:true,textContent:'',innerHTML:''},button={disabled:false};
+ const nodes={problemInput:{value:'当前问题'},associateBtn:button,associationResult:output};
+ const ctx={document:{getElementById:id=>nodes[id]},selectedKnowledge:{original:'作者说关闭通知',source:'test.pdf',page:1},connectionAttempt:0,saveDraft:()=>{},escapeHtml:s=>String(s).replaceAll('<','&lt;')};
+ let sent,count=0,resolve;
+ ctx.fetch=async(_,options)=>{count++;sent=JSON.parse(options.body);return new Promise(r=>resolve=r)};
+ vm.createContext(ctx);vm.runInContext(code,ctx);
+ const first=ctx.establishConnection();await ctx.establishConnection();assert.equal(count,1);assert.equal(sent.context,'作者说关闭通知');assert.equal(sent.problem,'当前问题');
+ resolve({ok:true,json:async()=>({relation:'动态关联',author_method:{method:'关闭通知',evidence:'关闭通知',conditions:'可离线'},ai_suggestion:null})});await first;
+ assert(output.innerHTML.includes('原文作者方法'));assert(output.innerHTML.includes('test.pdf'));assert.equal(button.disabled,false);
+ ctx.fetch=async()=>({ok:true,json:async()=>({relation:'关联',author_method:null,ai_suggestion:'尝试观察一次'})});await ctx.establishConnection();assert(output.innerHTML.includes('AI 推导的轻量建议（非作者观点）'));
+ ctx.fetch=async()=>({ok:true,json:async()=>({relation:'证据不足',author_method:null,ai_suggestion:null})});await ctx.establishConnection();assert(output.innerHTML.includes('当前未提供行动建议'));
+ ctx.fetch=async()=>{throw Error('测试断网')};await ctx.establishConnection();assert(output.textContent.includes('测试断网'));assert.equal(button.disabled,false);
+ assert(html.includes('onclick="goHome()">完成任务 →'));console.log('PASS Connect UI transport, labels, no-action, duplicate guard, error recovery, exit control');
+})().catch(e=>{console.error(e);process.exitCode=1});

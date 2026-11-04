@@ -104,6 +104,54 @@ def connect(req: ConnectRequest):
         raise HTTPException(status_code=500, detail="AI 理解服务暂时不可用。")
 
 
+class AssociationRequest(BaseModel):
+    problem: str
+    context: str
+
+
+class AuthorMethod(BaseModel):
+    method: str
+    evidence: str
+    conditions: str
+
+
+class AssociationResult(BaseModel):
+    relation: str
+    sufficient: bool
+    author_method: AuthorMethod | None
+    ai_suggestion: str | None
+
+
+def validate_association(raw, context):
+    result = AssociationResult.model_validate(raw, strict=True)
+    if not result.relation.strip() or result.relation.strip() == "关联分析与适用边界":
+        raise ValueError("缺少关联分析")
+    if not result.sufficient and (result.author_method or result.ai_suggestion):
+        raise ValueError("证据不足时不能提供行动")
+    if result.author_method:
+        method = result.author_method
+        if not all(value.strip() for value in (method.method, method.evidence, method.conditions)):
+            raise ValueError("原文方法缺少依据或适用条件")
+        if method.evidence not in context or result.ai_suggestion is not None:
+            raise ValueError("原文依据无效或方法类型冲突")
+    if result.ai_suggestion is not None and not result.ai_suggestion.strip():
+        raise ValueError("空建议")
+    return result
+
+
+@app.post("/api/associate", response_model=AssociationResult)
+def association(req: AssociationRequest):
+    if not req.problem.strip() or not req.context.strip():
+        raise HTTPException(status_code=400, detail="请提供当前问题和已确认片段。")
+    try:
+        from generation import associate
+        return validate_association(associate(req.problem.strip(), req.context), req.context)
+    except Exception as error:
+        # Do not expose upstream messages, request contents or credentials.
+        logger.error("association_failed type=%s status=%s", type(error).__name__, getattr(error, "status_code", None))
+        raise HTTPException(status_code=502, detail="关联分析暂时不可用，请重试；当前片段已保留。")
+
+
 if __name__ == "__main__":
     print("Registered routes:", [r.path for r in app.routes])
     import uvicorn

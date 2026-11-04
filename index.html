@@ -480,23 +480,30 @@ async function uploadPdf(file){
 }
 
 document.addEventListener("click", async (e)=>{
- if(e.target && e.target.id==="generate-ai-understanding-btn"){
+ if(e.target && e.target.id==="generate-ai-understanding-btn" && !e.target.disabled){
+   const button=e.target;
    const box=document.getElementById("ai-understanding-text");
-   const context=selectedKnowledge?.original || selectedKnowledge?.text || "";
+   const knowledge=selectedKnowledge;
+   const memory=combinedQuery();
+   const context=knowledge?.original || knowledge?.text || "";
+   button.disabled=true;
    box.textContent="AI 正在理解...";
    try{
      const r=await fetch("/api/connect",{
        method:"POST",
        headers:{"Content-Type":"application/json"},
-       body:JSON.stringify({query:currentQuery,context})
+       body:JSON.stringify({query:memory,context})
      });
      const d=await r.json();
+     if(!box.isConnected || selectedKnowledge!==knowledge)return;
      if(!r.ok) throw new Error(d.detail||"AI 理解暂时不可用");
      if(!d.explanation) throw new Error("暂时没有生成结果");
      box.innerHTML=`<div>${escapeHtml(d.explanation)}</div>
-       <div class="source" style="margin-top:10px">本次依据：${escapeHtml(selectedKnowledge.source)}${selectedKnowledge.page?` · 第 ${selectedKnowledge.page} 页`:""}${typeof selectedKnowledge.score==="number"?` · 相似度 ${(selectedKnowledge.score*100).toFixed(1)}%`:""}</div>`;
+       <div class="source" style="margin-top:10px">本次依据：${escapeHtml(knowledge.source)}${knowledge.page?` · 第 ${knowledge.page} 页`:""}${typeof knowledge.score==="number"?` · 相似度 ${(knowledge.score*100).toFixed(1)}%`:""}</div>`;
    }catch(err){
-     box.textContent="AI 理解暂时不可用："+err;
+     if(box.isConnected && selectedKnowledge===knowledge)box.textContent="AI 理解暂时不可用："+err;
+   }finally{
+     button.disabled=false;
    }
  }
 });

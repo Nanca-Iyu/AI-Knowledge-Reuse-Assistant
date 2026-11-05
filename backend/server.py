@@ -3,6 +3,7 @@ import shutil
 import logging
 import re
 import time
+import unicodedata
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
@@ -131,20 +132,40 @@ class AssociationResult(BaseModel):
     ai_suggestion: str | None
 
 
+def original_evidence(evidence, context):
+    if evidence in context:
+        return evidence
+    def canonical(text):
+        chars, positions = [], []
+        for index, char in enumerate(text):
+            for normalized in unicodedata.normalize('NFKC', char):
+                if not normalized.isspace():
+                    chars.append(normalized)
+                    positions.append(index)
+        return ''.join(chars), positions
+    needle, _ = canonical(evidence)
+    haystack, positions = canonical(context)
+    start = haystack.find(needle) if needle else -1
+    if start < 0:
+        raise ValueError('evidence_not_in_passage')
+    return context[positions[start]:positions[start+len(needle)-1]+1]
+
+
 def validate_association(raw, context):
     result = AssociationResult.model_validate(raw, strict=True)
     if not result.relation.strip() or result.relation.strip() == "关联分析与适用边界":
-        raise ValueError("缺少关联分析")
+        raise ValueError("relation_missing_or_placeholder")
     if not result.sufficient and (result.author_method or result.ai_suggestion):
-        raise ValueError("证据不足时不能提供行动")
+        raise ValueError("action_without_evidence")
     if result.author_method:
         method = result.author_method
         if not all(value.strip() for value in (method.method, method.evidence, method.conditions)):
-            raise ValueError("原文方法缺少依据或适用条件")
-        if method.evidence not in context or result.ai_suggestion is not None:
-            raise ValueError("原文依据无效或方法类型冲突")
+            raise ValueError("author_fields_empty")
+        if result.ai_suggestion is not None:
+            raise ValueError("conflicting_action_types")
+        method.evidence = original_evidence(method.evidence, context)
     if result.ai_suggestion is not None and not result.ai_suggestion.strip():
-        raise ValueError("空建议")
+        raise ValueError("suggestion_empty")
     return result
 
 
@@ -152,12 +173,17 @@ def validate_association(raw, context):
 def association(req: AssociationRequest):
     if not req.problem.strip() or not req.context.strip():
         raise HTTPException(status_code=400, detail="请提供当前问题和已确认片段。")
+    stage = 'model_or_parse'
     try:
         from generation import associate
-        return validate_association(associate(req.problem.strip(), req.context), req.context)
+        raw = associate(req.problem.strip(), req.context)
+        stage = 'schema_or_evidence'
+        return validate_association(raw, req.context)
     except Exception as error:
         # Do not expose upstream messages, request contents or credentials.
-        logger.error("association_failed type=%s status=%s", type(error).__name__, getattr(error, "status_code", None))
+        safe_codes = {'relation_missing_or_placeholder', 'action_without_evidence', 'author_fields_empty', 'conflicting_action_types', 'evidence_not_in_passage', 'suggestion_empty'}
+        reason = str(error) if type(error) is ValueError and str(error) in safe_codes else 'not_logged'
+        logger.error("association_failed stage=%s type=%s reason=%s status=%s", getattr(error, 'stage', stage), type(error).__name__, reason, getattr(error, "status_code", None))
         raise HTTPException(status_code=502, detail="关联分析暂时不可用，请重试；当前片段已保留。")
 
 

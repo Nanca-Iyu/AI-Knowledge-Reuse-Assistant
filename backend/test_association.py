@@ -23,6 +23,25 @@ class AssociationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_association(self.result(sufficient=False, ai_suggestion="强行行动"), "原文")
 
+    def test_pdf_equivalent_evidence(self):
+        context = '作者建议关闭⼿机 通知。'
+        method = dict(method='关闭通知', evidence='关闭手机通知', conditions='可离线')
+        self.assertNotIn(method['evidence'], context)  # reproduces old exact-match rejection
+        result = validate_association(self.result(author_method=method), context)
+        self.assertEqual(result.author_method.evidence, '关闭⼿机 通知')
+        method['evidence'] = '不关闭手机通知'
+        with self.assertRaisesRegex(ValueError, 'evidence_not_in_passage'):
+            validate_association(self.result(author_method=method), context)
+
+    def test_validation_reason_logging(self):
+        method = dict(method='方法', evidence='伪造证据', conditions='条件')
+        with patch('generation.associate', return_value=self.result(author_method=method)):
+            with self.assertLogs('rag.connect', level='ERROR') as logs:
+                with self.assertRaises(HTTPException):
+                    association(AssociationRequest(problem='私人问题', context='私人原文'))
+            self.assertIn('reason=evidence_not_in_passage', logs.output[0])
+            self.assertNotIn('私人', logs.output[0])
+
     def test_endpoint_and_failure(self):
         with patch('generation.associate', return_value=self.result()) as model:
             association(AssociationRequest(problem="当前问题", context="已确认片段"))

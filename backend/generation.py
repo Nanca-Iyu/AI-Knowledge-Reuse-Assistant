@@ -11,10 +11,14 @@ def timed_model(function):
         start = time.perf_counter()
         try:
             return function(*args, **kwargs)
+        except Exception as error:
+            if not hasattr(error, 'stage'):
+                error.stage = 'sdk' if isinstance(error, APIError) else 'configuration_or_generation'
+            raise
         finally:
             logging.getLogger('uvicorn.error').info('model_timing operation=%s elapsed_ms=%.0f', function.__name__, (time.perf_counter()-start)*1000)
     return measured
-from openai import OpenAI
+from openai import OpenAI, APIError
 
 SYSTEM = """
 你是AI知识复用助手。
@@ -81,4 +85,11 @@ AI 建议只选一个具体动作，不列多个例子、备选项或用“或�
                 {"role": "user", "content": json.dumps({"problem": problem, "passage": context}, ensure_ascii=False)},
             ],
         )
-    return json.loads(response.choices[0].message.content or "")
+    try:
+        content = (response.choices[0].message.content or '').strip()
+        if content.startswith('```') and content.endswith('```'):
+            content = '\n'.join(content.splitlines()[1:-1]).strip()
+        return json.loads(content)
+    except (ValueError, IndexError, AttributeError) as error:
+        error.stage = 'json_parse'
+        raise

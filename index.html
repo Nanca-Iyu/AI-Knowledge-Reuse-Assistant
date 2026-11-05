@@ -181,6 +181,21 @@ const context=document.getElementById("context");
 function escapeHtml(s){
  return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 }
+function renderExplanation(value){
+ // Escape all model text first; only generate our own basic formatting tags.
+ const inline=text=>escapeHtml(text).replace(/\*\*([^*\n]+)\*\*/g,"<strong>$1</strong>");
+ const lines=String(value).replace(/\r\n?/g,"\n").split("\n");
+ let html="", paragraph=[], list=null;
+ const flush=()=>{if(paragraph.length){html+=`<p style="margin:0 0 12px">${paragraph.map(inline).join("<br>")}</p>`;paragraph=[];}};
+ const close=()=>{if(list){html+=`</${list}>`;list=null;}};
+ for(const line of lines){
+  const item=line.match(/^\s*(?:([-*])\s+|\d+[.)、]\s+)(.+)$/);
+  if(item){flush();const type=item[1]?"ul":"ol";if(list!==type){close();html+=`<${type}>`;list=type;}html+=`<li>${inline(item[2])}</li>`;}
+  else if(!line.trim()){flush();close();}
+  else{close();paragraph.push(line);}
+ }
+ flush();close();return html;
+}
 function saveDraft(key,value){
  drafts[key]=value;
  localStorage.setItem("knowledgeDemoDrafts",JSON.stringify(drafts));
@@ -390,7 +405,10 @@ function showConnect(){
    <div id="associationResult" aria-live="polite"></div>
    <button class="secondary" style="margin-top:12px" onclick="goHome()">完成任务 →</button>
   </div>
-  <aside class="side-note"><h3>当前知识</h3><p>「${escapeHtml(selectedKnowledge.object)}」</p><p style="margin-top:10px">你可以把一个具体场景、正在解决的问题或想做的产品判断写进来。</p></aside>
+  <aside class="side-note"><h3>当前知识</h3><p>「${escapeHtml(selectedKnowledge.object)}」</p>
+   <div class="source">${escapeHtml(selectedKnowledge.source)}${selectedKnowledge.page?` · 第 ${selectedKnowledge.page} 页`:""}</div>
+   <h3 style="margin-top:16px">最初的记忆描述</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">${escapeHtml(combinedQuery())}</p>
+   <p style="margin-top:10px">你可以把一个具体场景、正在解决的问题或想做的产品判断写进来。</p></aside>
  </div></div>`;
  const input=document.getElementById("problemInput");
  input.oninput=()=>{saveDraft("connect",input.value);document.getElementById("connectDraft").textContent="已自动保存草稿";};
@@ -505,7 +523,7 @@ document.addEventListener("click", async (e)=>{
      if(!box.isConnected || selectedKnowledge!==knowledge)return;
      if(!r.ok) throw new Error(d.detail||"AI 理解暂时不可用");
      if(!d.explanation) throw new Error("暂时没有生成结果");
-     box.innerHTML=`<div>${escapeHtml(d.explanation)}</div>
+     box.innerHTML=`<div>${renderExplanation(d.explanation)}</div>
        <div class="source" style="margin-top:10px">本次依据：${escapeHtml(knowledge.source)}${knowledge.page?` · 第 ${knowledge.page} 页`:""}${typeof knowledge.score==="number"?` · 相似度 ${(knowledge.score*100).toFixed(1)}%`:""}</div>`;
    }catch(err){
      if(box.isConnected && selectedKnowledge===knowledge)box.textContent="AI 理解暂时不可用："+err;

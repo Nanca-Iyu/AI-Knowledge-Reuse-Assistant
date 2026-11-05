@@ -1,0 +1,13 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const html=fs.readFileSync(__dirname+'/index.html','utf8');
+const code=html.slice(html.indexOf('function escapeHtml('),html.indexOf('function saveDraft('));
+const ctx={};vm.createContext(ctx);vm.runInContext(code,ctx);
+const rendered=ctx.renderExplanation('**重点**\n\n第二段\n\n- 项目一\n- 项目二\n\n1. 第一步\n2. 第二步');
+assert(rendered.includes('<strong>重点</strong>'));assert(rendered.includes('<ul><li>项目一</li>'));assert(rendered.includes('<ol><li>第一步</li>'));assert.equal((rendered.match(/<p /g)||[]).length,2);
+const unsafe=ctx.renderExplanation('**<img src=x onerror=alert(1)>**\n<script>alert(1)</script>\n[jump](javascript:alert(1))');
+assert(!unsafe.includes('<img'));assert(!unsafe.includes('<script'));assert(!unsafe.includes('<a '));assert(unsafe.includes('&lt;img'));
+const nodes={panel:{},problemInput:{value:''},connectDraft:{}},knowledge={object:'对象',source:'source.pdf',page:12};
+Object.assign(ctx,{document:{getElementById:id=>nodes[id]},panel:nodes.panel,selectedKnowledge:knowledge,drafts:{},setStep:()=>{},showContext:()=>{},combinedQuery:()=> '原始描述\n补充线索 <script>',saveDraft:()=>{}});
+vm.runInContext(html.slice(html.indexOf('function showConnect()'),html.indexOf('async function establishConnection()')),ctx);ctx.showConnect();
+assert(nodes.panel.innerHTML.includes('原始描述\n补充线索 &lt;script&gt;'));assert(nodes.panel.innerHTML.includes('source.pdf · 第 12 页'));assert(nodes.panel.innerHTML.includes('最初的记忆描述'));
+console.log('PASS formatting, escaped model content, complete memory and source/page');

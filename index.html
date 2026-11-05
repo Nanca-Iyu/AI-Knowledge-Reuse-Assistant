@@ -92,11 +92,17 @@ textarea::placeholder{color:#aaa79f}
 .ai-understanding-title{font-weight:700;margin-bottom:8px}
 .memory-context,.association-sections{overflow-wrap:anywhere;min-width:0;line-height:1.8}
 .memory-group + .memory-group{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
-.memory-group strong{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.memory-group strong{display:block;font-size:12px;color:var(--accent);margin-bottom:4px}
 .memory-body{white-space:pre-wrap}
 .association-sections{margin-top:18px;color:var(--ink)}
 .association-section{padding:16px 0;border-top:1px solid var(--line)}
 .association-section h4{margin:0 0 8px;font-size:14px}
+.association-section:first-child{border-top:0;padding-top:0}
+.association-section h4,.association-evidence summary{color:var(--accent)}
+.association-evidence{margin:12px 0 18px;border-top:1px solid var(--line);padding-top:12px}
+.association-evidence summary{cursor:pointer;font-size:13px;font-weight:650;padding:4px 0}
+.association-evidence[open] summary{margin-bottom:12px}
+.association-evidence .association-section{padding:12px 0}
 .association-section p{margin:0 0 10px;white-space:pre-wrap}
 .association-section blockquote{margin:8px 0;padding:12px 16px;border-left:3px solid var(--accent);background:var(--surface-2);white-space:pre-wrap}
 .detail-grid>*,.connect-layout>*{min-width:0;overflow-wrap:anywhere}
@@ -207,7 +213,7 @@ function renderExplanation(value){
  flush();close();return html;
 }
 function memoryContext(){
- return `<div class="memory-context"><div class="memory-group"><strong>你想找回的记忆</strong><div class="memory-body">${escapeHtml(currentQuery)}</div></div>${supplementalClues?`<div class="memory-group"><strong>后来补充的线索</strong><div class="memory-body">${escapeHtml(supplementalClues)}</div></div>`:""}</div>`;
+ return `<div class="memory-context"><div class="memory-group"><strong>最初的记忆</strong><div class="memory-body">${escapeHtml(currentQuery)}</div></div>${supplementalClues?`<div class="memory-group"><strong>补充线索</strong><div class="memory-body">${escapeHtml(supplementalClues)}</div></div>`:""}</div>`;
 }
 async function aiRequest(url, options, target, label){
  const controller=new AbortController(), started=performance.now();
@@ -452,8 +458,8 @@ async function establishConnection(){
   if(!output.isConnected || selectedKnowledge!==knowledge)return;
   if(!response.ok)throw new Error(data.detail||"关联分析失败");
   const method=data.author_method;
-  output.innerHTML=`<div class="association-sections"><section class="association-section"><h4>关联分析</h4>${renderExplanation(data.relation)}</section>
-   ${method?`<section class="association-section"><h4>原文作者方法</h4>${renderExplanation(method.method)}</section><section class="association-section"><h4>原文依据</h4><blockquote>${escapeHtml(method.evidence)}</blockquote></section><section class="association-section"><h4>适用条件与局限</h4>${renderExplanation(method.conditions)}</section>`:data.ai_suggestion?`<section class="association-section"><h4>AI 推导的轻量建议（非作者观点）</h4>${renderExplanation(data.ai_suggestion)}</section>`:`<p>当前未提供行动建议，可直接结束。</p>`}
+  output.innerHTML=`<div class="association-sections"><section class="association-section"><h4>关联结论与分析</h4>${renderExplanation(data.relation)}</section>
+   ${method?`<section class="association-section"><h4>原文作者方法</h4>${renderExplanation(method.method)}</section><details class="association-evidence"><summary>查看原文依据与适用边界</summary><section class="association-section"><h4>原文依据</h4><blockquote>${escapeHtml(method.evidence)}</blockquote></section><section class="association-section"><h4>适用条件与局限</h4>${renderExplanation(method.conditions)}</section></details>`:data.ai_suggestion?`<section class="association-section"><h4>AI 推导的轻量建议（非作者观点）</h4>${renderExplanation(data.ai_suggestion)}</section>`:`<p>当前未提供行动建议，可直接结束。</p>`}
    <div class="source">${escapeHtml(knowledge.source)}${knowledge.page?` · 第 ${knowledge.page} 页`:""}</div></div>`;
  }catch(error){if(output.isConnected)output.textContent=error.message||"关联分析失败，请重试。";}
  finally{button.disabled=false;}

@@ -1,5 +1,19 @@
 import os
 import json
+import time
+import logging
+from functools import wraps
+
+
+def timed_model(function):
+    @wraps(function)
+    def measured(*args, **kwargs):
+        start = time.perf_counter()
+        try:
+            return function(*args, **kwargs)
+        finally:
+            logging.getLogger('uvicorn.error').info('model_timing operation=%s elapsed_ms=%.0f', function.__name__, (time.perf_counter()-start)*1000)
+    return measured
 from openai import OpenAI
 
 SYSTEM = """
@@ -17,11 +31,12 @@ SYSTEM = """
 - 输出简洁、帮助用户判断是否继续使用该片段。
 """
 
+@timed_model
 def explain(query, context):
     key=os.getenv("DEEPSEEK_API_KEY")
     if not key:
         raise RuntimeError("未检测到 DEEPSEEK_API_KEY")
-    client=OpenAI(api_key=key, base_url="https://api.deepseek.com")
+    client=OpenAI(api_key=key, base_url="https://api.deepseek.com", timeout=45, max_retries=0)
     r=client.chat.completions.create(
         model="deepseek-chat",
         messages=[
@@ -41,6 +56,7 @@ def explain(query, context):
     return r.choices[0].message.content
 
 
+@timed_model
 def associate(problem, context):
     key = os.getenv("DEEPSEEK_API_KEY")
     if not key:

@@ -2,6 +2,7 @@ from pathlib import Path
 import shutil
 import logging
 import re
+import time
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
@@ -17,6 +18,14 @@ app = FastAPI(title="AI知识复用助手 · RAG Spike V0.1 Local")
 logger = logging.getLogger("rag.connect")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 ensure_dirs()
+
+@app.middleware("http")
+async def request_timing(request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    if request.url.path in ("/api/connect", "/api/associate"):
+        response.headers["X-Process-Ms"] = str(round((time.perf_counter()-start)*1000))
+    return response
 
 class SearchRequest(BaseModel):
     query: str

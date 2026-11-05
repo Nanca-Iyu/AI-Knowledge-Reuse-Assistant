@@ -1,5 +1,16 @@
 # Project 01｜跨工具交接
 
+## 2026-11-05 第二轮反馈修复
+
+- fixture 根因：资产 UI 读取 index.json，磁盘文件删除不会自动删除 assets/chunks；模型缓存共享且独立。本地开发副本 fixture.pdf 实际仍存在。精确移除 filename/source 为 fixture.pdf 的 1 条资产、346 个片段；PDF 移入备份，其他两本书的片段保留并校验相等，未触碰共享模型缓存。
+- 恢复备份：项目工作区 backups/fixture-removal-20261105-145506，含原索引及 fixture.pdf；运行资料与备份不进入仓库。本次是定向维护，尚无完整资产删除 UI/API。
+- 展示：Understand 与 Connect 使用同一 memoryContext，明确分开原始描述/补充线索；生成仍使用完整 combinedQuery，来源页码保留。
+- 等待：两个 AI 请求共用安全等待封装，显示秒数和 60 秒截止反馈；成功/失败清理计时器；原文/输入保留。后端增加 X-Process-Ms，生成函数只记录操作名和耗时，不记录正文或凭据。Understand SDK 配置 45 秒超时及零重试，与 Connect 一致。
+- 实测（隔离 8003，真实调用各一次）：Understand 客户端 14281ms、后端 14212ms、生成函数 11626ms；Connect 9038/9035/9031ms。生成函数含 SDK 初始化、序列化和网络，并非纯模型推理时间；Understand 另约 2586ms 后端初始化/调度，未细分。客户端为 httpx，不能冒称浏览器实测；实际浏览器前端等待可在控制台查看 frontend_ms/backend_ms。
+- PDF 原因抽查：数字极简第 10 页 pypdf 提取含 26 个换行、0 个普通空格和 63 个 CJK 部首兼容字符。clean_text 把换行压为空格；700/120 字符切片不按句边界，产生半句与字间空格。源 PDF 的字体映射/排版与提取相关，但未视觉逐字核对源文件，归因比例 Unknown。影响阅读、引用比对及潜在检索质量；本轮不改模型、提取或索引书籍文本。
+- 测试：test_display.cjs（两类线索及来源转义）、test_connect.cjs 回归、test_wait.cjs（加载/超时/清理）通过；后端原有单元测试通过。真实浏览器回归本轮未执行。
+- 风险：AbortController 终止前端等待不保证取消已在服务端运行的请求，45 秒为 SDK 超时而非全局执行硬截止；不要重复点击刷请求。模型样本计时不代表稳定性能指标；原有 AC-C06/竞态和历史密钥未全面扫描风险保留。
+
 ## 2026-11-05 首轮体验反馈：Understand 排版与 Connect 记忆上下文
 
 - 修改 index.html：解释先整体 HTML 转义，再仅生成 strong、段落、换行、有序/无序列表标签；不信任模型 HTML，不解析链接或执行脚本。未修改生成业务逻辑。

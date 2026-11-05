@@ -196,6 +196,21 @@ function renderExplanation(value){
  }
  flush();close();return html;
 }
+function memoryContext(){
+ return `<div style="white-space:pre-wrap;overflow-wrap:anywhere"><strong>原始描述</strong><br>${escapeHtml(currentQuery)}${supplementalClues?`<br><strong>补充线索</strong><br>${escapeHtml(supplementalClues)}`:""}</div>`;
+}
+async function aiRequest(url, options, target, label){
+ const controller=new AbortController(), started=performance.now();
+ const timer=setInterval(()=>{if(target.isConnected)target.textContent=`${label}（已等待 ${Math.floor((performance.now()-started)/1000)} 秒，最长等待 60 秒）`;},1000);
+ const timeout=setTimeout(()=>controller.abort(),60000);
+ try{
+  const response=await fetch(url,{...options,signal:controller.signal});
+  const data=await response.json();
+  console.info('ai_request_timing',url,{frontend_ms:Math.round(performance.now()-started),backend_ms:response.headers?.get('X-Process-Ms')});
+  return {response,data};
+ }catch(error){if(error.name==='AbortError')throw new Error('等待超过 60 秒，请稍后重试；原文和输入已保留。');throw error;}
+ finally{clearInterval(timer);clearTimeout(timeout);}
+}
 function saveDraft(key,value){
  drafts[key]=value;
  localStorage.setItem("knowledgeDemoDrafts",JSON.stringify(drafts));
@@ -287,7 +302,7 @@ function understandRag(item){
    <div class="box original"><h4>检索到的原文</h4><div class="object">${escapeHtml(selectedKnowledge.object)}</div><p>${escapeHtml(selectedKnowledge.original)}</p>
     <div class="source" style="margin-top:12px">${escapeHtml(selectedKnowledge.source)}${selectedKnowledge.page?` · 第 ${selectedKnowledge.page} 页`:""} <span class="match">语义相似度 ${(selectedKnowledge.score*100).toFixed(1)}%</span></div>
    </div>
-   <div class="box ai-box"><h4>当前 Spike 状态</h4><p>V0.1 先只验证 Retrieval：系统根据你的自然语言描述，从真实 PDF 中找回相关片段。</p><div class="ai-relation">你最初记得的是：<br><b>${escapeHtml(currentQuery)}</b></div>
+   <div class="box ai-box"><h4>当前 Spike 状态</h4><p>V0.1 先只验证 Retrieval：系统根据你的自然语言描述，从真实 PDF 中找回相关片段。</p><div class="ai-relation">你最初记得的是：<br>${memoryContext()}</div>
    </div>
   </div>
   <div id="ai-understanding-box" class="ai-understanding-box"><div class="ai-understanding-title">🤖 AI 为什么认为它相关？</div><div id="ai-understanding-text">AI 将结合你的描述和检索内容，帮助判断为什么它可能相关。</div>
@@ -407,7 +422,7 @@ function showConnect(){
   </div>
   <aside class="side-note"><h3>当前知识</h3><p>「${escapeHtml(selectedKnowledge.object)}」</p>
    <div class="source">${escapeHtml(selectedKnowledge.source)}${selectedKnowledge.page?` · 第 ${selectedKnowledge.page} 页`:""}</div>
-   <h3 style="margin-top:16px">最初的记忆描述</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">${escapeHtml(combinedQuery())}</p>
+   <h3 style="margin-top:16px">最初的记忆描述</h3>${memoryContext()}
    <p style="margin-top:10px">你可以把一个具体场景、正在解决的问题或想做的产品判断写进来。</p></aside>
  </div></div>`;
  const input=document.getElementById("problemInput");
@@ -423,8 +438,7 @@ async function establishConnection(){
  saveDraft("connect",text);
  button.disabled=true;output.textContent="AI 正在分析关联…";
  try{
-  const response=await fetch('/api/associate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({problem:text,context:knowledge.original||knowledge.text})});
-  const data=await response.json();
+  const {response,data}=await aiRequest('/api/associate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({problem:text,context:knowledge.original||knowledge.text})},output,'AI 正在分析关联…');
   if(!output.isConnected || selectedKnowledge!==knowledge)return;
   if(!response.ok)throw new Error(data.detail||"关联分析失败");
   const method=data.author_method;
@@ -514,12 +528,11 @@ document.addEventListener("click", async (e)=>{
    button.disabled=true;
    box.textContent="AI 正在理解...";
    try{
-     const r=await fetch("/api/connect",{
+     const {response:r,data:d}=await aiRequest("/api/connect",{
        method:"POST",
        headers:{"Content-Type":"application/json"},
        body:JSON.stringify({query:memory,context})
-     });
-     const d=await r.json();
+     },box,'AI 正在理解…');
      if(!box.isConnected || selectedKnowledge!==knowledge)return;
      if(!r.ok) throw new Error(d.detail||"AI 理解暂时不可用");
      if(!d.explanation) throw new Error("暂时没有生成结果");

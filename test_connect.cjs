@@ -7,6 +7,7 @@ const code=html.slice(html.indexOf('async function establishConnection()'),html.
  const ctx={document:{getElementById:id=>nodes[id]},selectedKnowledge:{original:'作者说关闭通知',source:'test.pdf',page:1},connectionAttempt:0,saveDraft:()=>{},escapeHtml:s=>String(s).replaceAll('<','&lt;')};
  let sent,count=0,resolve;
  ctx.fetch=async(_,options)=>{count++;sent=JSON.parse(options.body);return new Promise(r=>resolve=r)};
+ ctx.aiRequest=async(url,opts)=>{const response=await ctx.fetch(url,opts);return {response,data:await response.json()}};
  vm.createContext(ctx);vm.runInContext(code,ctx);
  const first=ctx.establishConnection();await ctx.establishConnection();assert.equal(count,1);assert.equal(sent.context,'作者说关闭通知');assert.equal(sent.problem,'当前问题');
  resolve({ok:true,json:async()=>({relation:'动态关联',author_method:{method:'关闭通知',evidence:'关闭通知',conditions:'可离线'},ai_suggestion:null})});await first;

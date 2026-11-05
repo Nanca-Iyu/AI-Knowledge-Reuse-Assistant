@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI知识复用助手 · RAG Spike V0.1</title>
+<title>AI知识复用助手</title>
 <style>
 :root{
   --bg:#f6f6f3;--surface:#fff;--surface-2:#fafaf8;--ink:#20201e;--muted:#77756f;
@@ -90,12 +90,22 @@ textarea::placeholder{color:#aaa79f}
 
 .ai-understanding-box{margin-top:16px;padding:16px;border-radius:14px;background:#f7f7fb;border:1px solid #ddd}
 .ai-understanding-title{font-weight:700;margin-bottom:8px}
+.memory-context,.association-sections{overflow-wrap:anywhere;min-width:0;line-height:1.8}
+.memory-group + .memory-group{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.memory-group strong{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.memory-body{white-space:pre-wrap}
+.association-sections{margin-top:18px;color:var(--ink)}
+.association-section{padding:16px 0;border-top:1px solid var(--line)}
+.association-section h4{margin:0 0 8px;font-size:14px}
+.association-section p{margin:0 0 10px;white-space:pre-wrap}
+.association-section blockquote{margin:8px 0;padding:12px 16px;border-left:3px solid var(--accent);background:var(--surface-2);white-space:pre-wrap}
+.detail-grid>*,.connect-layout>*{min-width:0;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
 <div class="app">
 <header class="topbar">
-  <div class="brand"><span>✦</span>AI知识复用助手 <span class="demo-badge">Web Demo · RAG Spike V0.1</span><span class="demo-badge">Local Knowledge</span></div>
+  <div class="brand"><span>✦</span>AI知识复用助手 <span class="demo-badge">阅读与知识复用</span><span class="demo-badge">本地知识库</span></div>
   <div class="top-actions">
     <button class="top-link" onclick="goHome()">回到找回</button>
     <span style="font-size:12px;color:#8a877f">找回 → 理解 → 关联 → 继续使用</span>
@@ -144,7 +154,7 @@ textarea::placeholder{color:#aaa79f}
 <div class="panel" id="panel"></div>
 </section>
 
-<div class="footer-note">RAG Spike V0.1 · 当前检索来自本地导入的 PDF；Embedding 在本机运行，原始 PDF 与向量索引均保存在本机。</div>
+<div class="footer-note">从你导入的 PDF 中找回知识；文档与检索数据保存在本机。</div>
 </main>
 </div>
 
@@ -197,7 +207,7 @@ function renderExplanation(value){
  flush();close();return html;
 }
 function memoryContext(){
- return `<div style="white-space:pre-wrap;overflow-wrap:anywhere"><strong>原始描述</strong><br>${escapeHtml(currentQuery)}${supplementalClues?`<br><strong>补充线索</strong><br>${escapeHtml(supplementalClues)}`:""}</div>`;
+ return `<div class="memory-context"><div class="memory-group"><strong>你想找回的记忆</strong><div class="memory-body">${escapeHtml(currentQuery)}</div></div>${supplementalClues?`<div class="memory-group"><strong>后来补充的线索</strong><div class="memory-body">${escapeHtml(supplementalClues)}</div></div>`:""}</div>`;
 }
 async function aiRequest(url, options, target, label){
  const controller=new AbortController(), started=performance.now();
@@ -302,7 +312,7 @@ function understandRag(item){
    <div class="box original"><h4>检索到的原文</h4><div class="object">${escapeHtml(selectedKnowledge.object)}</div><p>${escapeHtml(selectedKnowledge.original)}</p>
     <div class="source" style="margin-top:12px">${escapeHtml(selectedKnowledge.source)}${selectedKnowledge.page?` · 第 ${selectedKnowledge.page} 页`:""} <span class="match">语义相似度 ${(selectedKnowledge.score*100).toFixed(1)}%</span></div>
    </div>
-   <div class="box ai-box"><h4>当前 Spike 状态</h4><p>V0.1 先只验证 Retrieval：系统根据你的自然语言描述，从真实 PDF 中找回相关片段。</p><div class="ai-relation">你最初记得的是：<br>${memoryContext()}</div>
+   <div class="box ai-box"><h4>你的找回线索</h4><p>根据你的描述找回相关原文，再判断它是否符合记忆。</p><div style="margin-top:16px">${memoryContext()}</div>
    </div>
   </div>
   <div id="ai-understanding-box" class="ai-understanding-box"><div class="ai-understanding-title">🤖 AI 为什么认为它相关？</div><div id="ai-understanding-text">AI 将结合你的描述和检索内容，帮助判断为什么它可能相关。</div>
@@ -387,7 +397,7 @@ async function showAssetList(){
   const res=await fetch("/api/assets");
   const data=await res.json();
   const assets=data.assets||[];
-  panel.innerHTML=`<div class="panel-head"><div><h2>我的知识资产</h2><div class="status">当前 Spike 已导入的 PDF。</div></div><button class="secondary" onclick="goHome()">回到找回</button></div>
+  panel.innerHTML=`<div class="panel-head"><div><h2>我的知识资产</h2><div class="status">已导入的阅读材料。</div></div><button class="secondary" onclick="goHome()">回到找回</button></div>
   <div class="results">${assets.length?assets.map(a=>`<article class="result"><div><h3>${escapeHtml(a.filename)}</h3><p>${a.chunks} 个知识片段已建立语义索引。</p><div class="source">${a.pages?`${a.pages} 页 · `:""}已准备好</div></div></article>`).join(""):`<div class="empty"><h3>还没有知识资产</h3><p>先回到页面顶部选择一本 PDF。</p></div>`}</div>`;
  }catch(e){
   panel.innerHTML=`<div class="empty"><h3>无法读取知识资产</h3><p>${escapeHtml(e.message||"本地 RAG 服务不可用。")}</p></div>`;
@@ -400,7 +410,7 @@ function understand(id){
  <div class="detail">
   <div class="detail-grid">
    <div class="box original"><h4>知识对象</h4><div class="object">「${escapeHtml(selectedKnowledge.object)}」</div><p>${escapeHtml(selectedKnowledge.original)}</p></div>
-   <div class="box ai-box"><h4>AI 重新理解</h4><p>${escapeHtml(selectedKnowledge.text)}</p><div class="ai-relation">你最初记得的是：<br><b>${escapeHtml(currentQuery)}</b></div></div>
+   <div class="box ai-box"><h4>AI 重新理解</h4><p>${escapeHtml(selectedKnowledge.text)}</p><div style="margin-top:16px">${memoryContext()}</div></div>
   </div>
   <div class="confirm"><div><div class="confirm-title">这是我想找的内容吗？</div><div class="confirm-sub">AI 提供候选与解释，但最终确认由你完成。</div></div>
    <div class="actions"><button class="secondary" onclick="showRetry()">否，重新找回</button><button class="primary" onclick="confirmKnowledge()">是，继续</button></div>
@@ -422,7 +432,7 @@ function showConnect(){
   </div>
   <aside class="side-note"><h3>当前知识</h3><p>「${escapeHtml(selectedKnowledge.object)}」</p>
    <div class="source">${escapeHtml(selectedKnowledge.source)}${selectedKnowledge.page?` · 第 ${selectedKnowledge.page} 页`:""}</div>
-   <h3 style="margin-top:16px">最初的记忆描述</h3>${memoryContext()}
+   <div style="margin-top:18px">${memoryContext()}</div>
    <p style="margin-top:10px">你可以把一个具体场景、正在解决的问题或想做的产品判断写进来。</p></aside>
  </div></div>`;
  const input=document.getElementById("problemInput");
@@ -442,8 +452,8 @@ async function establishConnection(){
   if(!output.isConnected || selectedKnowledge!==knowledge)return;
   if(!response.ok)throw new Error(data.detail||"关联分析失败");
   const method=data.author_method;
-  output.innerHTML=`<div class="ai-relation"><strong>关联与适用边界</strong><div style="white-space:pre-wrap">${escapeHtml(data.relation)}</div>
-   ${method?`<strong>原文作者方法</strong><p>${escapeHtml(method.method)}</p><p>原文依据：${escapeHtml(method.evidence)}</p><p>适用条件：${escapeHtml(method.conditions)}</p>`:data.ai_suggestion?`<strong>AI 推导的轻量建议（非作者观点）</strong><p>${escapeHtml(data.ai_suggestion)}</p>`:`<p>当前未提供行动建议，可直接结束。</p>`}
+  output.innerHTML=`<div class="association-sections"><section class="association-section"><h4>关联分析</h4>${renderExplanation(data.relation)}</section>
+   ${method?`<section class="association-section"><h4>原文作者方法</h4>${renderExplanation(method.method)}</section><section class="association-section"><h4>原文依据</h4><blockquote>${escapeHtml(method.evidence)}</blockquote></section><section class="association-section"><h4>适用条件与局限</h4>${renderExplanation(method.conditions)}</section>`:data.ai_suggestion?`<section class="association-section"><h4>AI 推导的轻量建议（非作者观点）</h4>${renderExplanation(data.ai_suggestion)}</section>`:`<p>当前未提供行动建议，可直接结束。</p>`}
    <div class="source">${escapeHtml(knowledge.source)}${knowledge.page?` · 第 ${knowledge.page} 页`:""}</div></div>`;
  }catch(error){if(output.isConnected)output.textContent=error.message||"关联分析失败，请重试。";}
  finally{button.disabled=false;}

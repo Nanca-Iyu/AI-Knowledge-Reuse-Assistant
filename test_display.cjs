@@ -9,5 +9,8 @@ assert(!unsafe.includes('<img'));assert(!unsafe.includes('<script'));assert(!uns
 const nodes={panel:{},problemInput:{value:''},connectDraft:{}},knowledge={object:'对象',source:'source.pdf',page:12};
 Object.assign(ctx,{document:{getElementById:id=>nodes[id]},panel:nodes.panel,selectedKnowledge:knowledge,drafts:{},setStep:()=>{},showContext:()=>{},combinedQuery:()=> '原始描述\n补充线索 <script>',saveDraft:()=>{}});
 vm.runInContext(html.slice(html.indexOf('function showConnect()'),html.indexOf('async function establishConnection()')),ctx);ctx.showConnect();
-assert(nodes.panel.innerHTML.includes('补充线索 &lt;script&gt;'));assert(nodes.panel.innerHTML.includes('<strong>原始描述</strong>'));assert(nodes.panel.innerHTML.includes('<strong>补充线索</strong>'));assert(nodes.panel.innerHTML.includes('source.pdf · 第 12 页'));assert(nodes.panel.innerHTML.includes('最初的记忆描述'));
+assert(nodes.panel.innerHTML.includes('补充线索 &lt;script&gt;'));assert(nodes.panel.innerHTML.includes('<strong>你想找回的记忆</strong>'));assert(nodes.panel.innerHTML.includes('<strong>后来补充的线索</strong>'));assert(nodes.panel.innerHTML.includes('source.pdf · 第 12 页'));
+ctx.supplementalClues='';assert(!ctx.memoryContext().includes('后来补充的线索'));
+ctx.currentQuery='<img>'.repeat(2000);assert(!ctx.memoryContext().includes('<img>'));assert(ctx.memoryContext().includes('&lt;img&gt;'));
+assert(html.includes('overflow-wrap:anywhere'));assert(html.includes('@media(max-width:820px)'));
 console.log('PASS formatting, escaped model content, complete memory and source/page');
